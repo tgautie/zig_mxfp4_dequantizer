@@ -4,7 +4,7 @@ const input = @embedFile("mixed.safetensors");
 const TensorConfig = struct {
     tensor_name: []const u8,
     dtype: []const u8,
-    shape: []u32,
+    shape: []const u32,
     data_offsets: [2]u32,
 };
 
@@ -55,26 +55,16 @@ fn parseTensorConfig(
 ) !TensorConfig {
     const parsed_tensor_config = try std.json.parseFromValue(ParsedTensorConfig, allocator, json_config, .{});
 
-    var shapes: []u32 = try allocator.alloc(u32, parsed_tensor_config.value.shape.len);
-    for (parsed_tensor_config.value.shape, 0..) |b, i| {
-        shapes[i] = @intCast(b);
-    }
-
-    var offsets: [2]u32 = undefined;
-    for (parsed_tensor_config.value.data_offsets, 0..) |b, i| {
-        offsets[i] = @intCast(b);
-    }
-
     return TensorConfig{
         .tensor_name = tensor_name,
         .dtype = parsed_tensor_config.value.dtype,
-        .shape = shapes,
-        .data_offsets = offsets,
+        .shape = parsed_tensor_config.value.shape,
+        .data_offsets = parsed_tensor_config.value.data_offsets,
     };
 }
 
 const ParsedTensorConfig = struct {
     dtype: []const u8,
-    shape: []const u8,
-    data_offsets: []const u8,
+    shape: []const u32,
+    data_offsets: [2]u32,
 };
