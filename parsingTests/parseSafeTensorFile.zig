@@ -1,5 +1,5 @@
 const std = @import("std");
-const input = @embedFile("zeros.safetensors");
+const input = @embedFile("ones.safetensors");
 
 const Field = struct {
     dtype: []const u8,
