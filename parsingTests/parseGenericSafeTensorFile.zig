@@ -1,5 +1,5 @@
 const std = @import("std");
-const input = @embedFile("ones.safetensors");
+const input = @embedFile("mixed.safetensors");
 
 const TensorConfig = struct {
     tensor_name: []const u8,
