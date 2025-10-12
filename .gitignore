@@ -5,4 +5,4 @@ resources/*.ttf
 input/
 *.mp4
 _*.zig
-
+exampleSafeTensors/
