@@ -31,7 +31,12 @@ fn read_header_config(
     const header_buf = file_buffer[8 .. 8 + header_size];
     std.debug.print("Header content: {s}\n", .{header_buf});
 
-    const parsed_json = try std.json.parseFromSlice(std.json.Value, allocator, header_buf, .{});
+    const parsed_json = try std.json.parseFromSlice(
+        std.json.Value,
+        allocator,
+        header_buf,
+        .{},
+    );
     defer parsed_json.deinit();
     const root = parsed_json.value;
 
@@ -49,7 +54,12 @@ fn read_header_config(
 
         const value = entry.value_ptr.*;
         const tensor_config = try parseTensorConfig(allocator, tensor_name, value);
-        std.debug.print("Tensor {s}: {s}, shape: {any}, data offsets: {any}\n", .{ tensor_config.tensor_name, tensor_config.dtype, tensor_config.shape, tensor_config.data_offsets });
+        std.debug.print("Tensor {s}: {s}, shape: {any}, data offsets: {any}\n", .{
+            tensor_config.tensor_name,
+            tensor_config.dtype,
+            tensor_config.shape,
+            tensor_config.data_offsets,
+        });
 
         const tensor_values_buf = input[8 + header_size + tensor_config.data_offsets[0] .. 8 + header_size + tensor_config.data_offsets[1]];
         const tensor_values = std.mem.bytesAsSlice(f32, tensor_values_buf);
@@ -62,7 +72,12 @@ fn parseTensorConfig(
     allocator: std.mem.Allocator,
     tensor_name: []const u8,
 ) !TensorConfig {
-    const parsed_tensor_config = try std.json.parseFromValue(ParsedTensorConfig, allocator, json_config, .{});
+    const parsed_tensor_config = try std.json.parseFromValue(
+        ParsedTensorConfig,
+        allocator,
+        json_config,
+        .{},
+    );
 
     return TensorConfig{
         .tensor_name = tensor_name,
