@@ -17,6 +17,3 @@ pub fn main() void {
 fn multiply(comptime T: type, a: @Vector(4, T), b: @Vector(4, T)) @Vector(4, T) {
     return a * b;
 }
-
-// - model.layers.0.mlp.experts.down_proj_blocks: { 32, 32, 2, 16 } U8
-// - model.layers.0.mlp.experts.down_proj_scales: { 32, 32, 2 } U8
