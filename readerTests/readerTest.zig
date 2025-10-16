@@ -47,7 +47,9 @@ pub fn main() !void {
 
     var bit_stream = Bitstream.init();
 
-    for (1..16) |_| {
+    std.debug.print("Enter 20 bytes:", .{});
+
+    for (1..160) |_| {
         const read_bit: u1 = try bit_stream.read(stdin);
         std.debug.print("{x}\n", .{read_bit});
     }
