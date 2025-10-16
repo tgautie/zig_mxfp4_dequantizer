@@ -6,3 +6,4 @@ input/
 *.mp4
 _*.zig
 exampleSafeTensors/
+.DS_Store

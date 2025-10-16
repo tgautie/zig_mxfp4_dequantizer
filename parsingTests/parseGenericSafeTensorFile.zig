@@ -16,28 +16,50 @@ pub fn main() !void {
     const header_size = read_header_size(file_buffer);
     std.debug.print("Header size: {}\n", .{header_size});
 
-    try read_header_config(file_buffer, header_size, allocator);
+    var tensor_configs = try parse_tensor_configs(file_buffer, header_size, allocator);
+    defer tensor_configs.deinit(allocator);
+
+    std.debug.print("Contains {} tensors:\n", .{tensor_configs.items.len});
+    for (tensor_configs.items) |tensor_config| {
+        std.debug.print("- {s}: {any} {s}\n", .{ tensor_config.tensor_name, tensor_config.shape, tensor_config.dtype });
+    }
+
+    std.debug.print("Reading tensor values:\n", .{});
+    for (tensor_configs.items) |tensor_config| {
+        const tensor_values = read_tensor_values(
+            file_buffer,
+            header_size,
+            tensor_config,
+        );
+        if (std.mem.eql(u8, tensor_config.dtype, "F32")) {
+            const tensor_values_f32 = std.mem.bytesAsSlice(f32, tensor_values);
+            std.debug.print("- {s}: {any}\n", .{ tensor_config.tensor_name, tensor_values_f32 });
+        } else {
+            std.debug.print("Not implemented: {s}\n", .{tensor_config.dtype});
+        }
+    }
 }
 
 fn read_header_size(file_buffer: []const u8) u64 {
     return std.mem.readInt(u64, file_buffer[0..8], .little);
 }
 
-fn read_header_config(
+fn parse_tensor_configs(
     file_buffer: []const u8,
     header_size: u64,
     allocator: std.mem.Allocator,
-) !void {
+) !std.ArrayList(TensorConfig) {
+    var tensor_configs = try std.ArrayList(TensorConfig).initCapacity(allocator, 1000000);
+    errdefer tensor_configs.deinit(allocator);
+
     const header_buf = file_buffer[8 .. 8 + header_size];
-    std.debug.print("Header content: {s}\n", .{header_buf});
 
     const parsed_json = try std.json.parseFromSlice(std.json.Value, allocator, header_buf, .{});
     defer parsed_json.deinit();
     const root = parsed_json.value;
 
     if (root != .object) {
-        std.debug.print("Root is not an object\n", .{});
-        return;
+        return error.RootIsNotAnObject;
     }
 
     var it = root.object.iterator();
@@ -48,26 +70,28 @@ fn read_header_config(
         }
 
         const value = entry.value_ptr.*;
-        const tensor_config = try parseTensorConfig(tensor_name, value, allocator);
-        std.debug.print("Tensor {s}: {s}, shape: {any}, data offsets: {any}\n", .{ tensor_config.tensor_name, tensor_config.dtype, tensor_config.shape, tensor_config.data_offsets });
-
-        const tensor_values_buf = input[8 + header_size + tensor_config.data_offsets[0] .. 8 + header_size + tensor_config.data_offsets[1]];
-        const tensor_values = std.mem.bytesAsSlice(f32, tensor_values_buf);
-        std.debug.print("Tensor {s} values: {any}\n", .{ tensor_name, tensor_values });
+        const tensor_config = try parse_tensor_config(tensor_name, value, allocator);
+        try tensor_configs.append(allocator, tensor_config);
     }
+
+    return tensor_configs;
 }
 
-fn parseTensorConfig(
+fn parse_tensor_config(
     tensor_name: []const u8,
     json_config: std.json.Value,
     allocator: std.mem.Allocator,
 ) !TensorConfig {
     const parsed_tensor_config = try std.json.parseFromValue(ParsedTensorConfig, allocator, json_config, .{});
 
+    const name_copy = try allocator.dupe(u8, tensor_name);
+    const dtype_copy = try allocator.dupe(u8, parsed_tensor_config.value.dtype);
+    const shape_copy = try allocator.dupe(u32, parsed_tensor_config.value.shape);
+
     return TensorConfig{
-        .tensor_name = tensor_name,
-        .dtype = parsed_tensor_config.value.dtype,
-        .shape = parsed_tensor_config.value.shape,
+        .tensor_name = name_copy,
+        .dtype = dtype_copy,
+        .shape = shape_copy,
         .data_offsets = parsed_tensor_config.value.data_offsets,
     };
 }
@@ -77,3 +101,14 @@ const ParsedTensorConfig = struct {
     shape: []const u32,
     data_offsets: [2]u32,
 };
+
+fn read_tensor_values(
+    file_buffer: []const u8,
+    header_size: u64,
+    tensor_config: TensorConfig,
+) []const u8 {
+    const start_offset = 8 + header_size + tensor_config.data_offsets[0];
+    const end_offset = 8 + header_size + tensor_config.data_offsets[1];
+    const tensor_values_buf = file_buffer[start_offset..end_offset];
+    return tensor_values_buf;
+}
