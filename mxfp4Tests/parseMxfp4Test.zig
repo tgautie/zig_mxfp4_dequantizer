@@ -5,14 +5,20 @@ pub fn main() void {
     const block_buf: [block_length / 2]u8 = [_]u8{ 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF };
 
     const fp4_vec = u8_to_fp4_vec(block_length, block_buf);
-    std.debug.print("{any}\n", .{fp4_vec});
+    std.debug.print("Initial FP4 vector: {b}\n", .{fp4_vec});
 
     const f32_vec = fp4_to_f32_vec(block_length, fp4_vec);
-    std.debug.print("{any}\n", .{f32_vec});
+    std.debug.print("Translated FP32 vector: {any}\n", .{f32_vec});
 
-    const scale: u8 = 0b11010101;
-    const scale_vec = e8m0_to_splat_f32_vec(block_length, scale);
-    std.debug.print("{any}\n", .{scale_vec});
+    const scale: u8 = 0b00000111;
+    std.debug.print("Scale FP8: {any}\n", .{scale});
+
+    const scale_f32 = e8m0_to_f32(scale);
+    std.debug.print("Translated FP32 scale: {any}\n", .{scale_f32});
+
+    const scale_vec: @Vector(block_length, f32) = @splat(scale_f32);
+    const decoded_mxfp4_vec = f32_vec * scale_vec;
+    std.debug.print("Decoded MXFP4 vector: {any}\n", .{decoded_mxfp4_vec});
 }
 
 const fp4_to_f32_decode_table = [_]f32{
@@ -43,11 +49,12 @@ fn fp4_to_f32_vec(comptime block_length: usize, fp4: @Vector(block_length, u4)) 
     return result;
 }
 
-pub fn e8m0_to_splat_f32_vec(comptime block_length: usize, x: u8) @Vector(block_length, f32) {
-    const x_f32: f32 = @floatFromInt(x);
-    const bias: f32 = 127.0;
-    const result_f32 = std.math.pow(f32, 2.0, x_f32 - bias);
-    return @splat(result_f32);
+fn e8m0_to_f32(x: u8) f32 {
+    const bias: i32 = 127;
+    const exp = @as(i32, x);
+
+    const exponent = @as(f32, @floatFromInt(exp - bias));
+    return std.math.pow(f32, 2.0, exponent);
 }
 
 // - model.layers.0.mlp.experts.down_proj_blocks: { 32, 32, 2, 16 } U8
