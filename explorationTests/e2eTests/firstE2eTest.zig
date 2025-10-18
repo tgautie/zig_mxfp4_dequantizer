@@ -2,7 +2,9 @@ const std = @import("std");
 
 pub fn main() void {
     const allocator = std.heap.page_allocator;
-    try parse_tensors(allocator);
+    parse_tensors(allocator) catch |err| {
+        std.debug.print("Error: {}\n", .{err});
+    };
 }
 
 const TensorConfig = struct {
@@ -13,14 +15,9 @@ const TensorConfig = struct {
 };
 
 fn parse_tensors(allocator: std.mem.Allocator) !void {
-    var file: std.fs.File = try std.fs.cwd().openFile("exampleSafetensors/light_with_mxfp4.safetensors", .{ .mode = .read_only });
-    var buffer: [1024]u8 = undefined;
-    const file_reader = file.reader(&buffer).interface;
+    const file_path = "exampleSafetensors/mixed.safetensors";
 
-    const header_size = try read_header_size(file_reader);
-    std.debug.print("Header size: {}\n", .{header_size});
-
-    var tensor_configs = try parse_tensor_configs(file_reader, header_size, allocator);
+    var tensor_configs = try parse_tensor_configs(file_path, allocator);
     defer tensor_configs.deinit(allocator);
 
     std.debug.print("Contains {} tensors:\n", .{tensor_configs.items.len});
@@ -28,35 +25,38 @@ fn parse_tensors(allocator: std.mem.Allocator) !void {
         std.debug.print("- {s}: {any} {s}\n", .{ tensor_config.tensor_name, tensor_config.shape, tensor_config.dtype });
     }
 
-    std.debug.print("Reading tensor values:\n", .{});
-    for (tensor_configs.items) |tensor_config| {
-        const tensor_values = read_tensor_values(
-            file_reader,
-            header_size,
-            tensor_config,
-        );
-        if (std.mem.eql(u8, tensor_config.dtype, "F32")) {
-            const tensor_values_f32 = std.mem.bytesAsSlice(f32, tensor_values);
-            std.debug.print("- {s}: {any}\n", .{ tensor_config.tensor_name, tensor_values_f32 });
-        } else {
-            std.debug.print("Not implemented: {s}\n", .{tensor_config.dtype});
-        }
-    }
-}
-
-fn read_header_size(file_reader: std.Io.Reader) u64 {
-    return try file_reader.takeByte();
+    // std.debug.print("Reading tensor values:\n", .{});
+    // for (tensor_configs.items) |tensor_config| {
+    //     const tensor_values = read_tensor_values(
+    //         file_reader,
+    //         header_size,
+    //         tensor_config,
+    //     );
+    //     if (std.mem.eql(u8, tensor_config.dtype, "F32")) {
+    //         const tensor_values_f32 = std.mem.bytesAsSlice(f32, tensor_values);
+    //         std.debug.print("- {s}: {any}\n", .{ tensor_config.tensor_name, tensor_values_f32 });
+    //     } else {
+    //         std.debug.print("Not implemented: {s}\n", .{tensor_config.dtype});
+    //     }
+    // }
 }
 
 fn parse_tensor_configs(
-    file_reader: std.Io.Reader,
-    header_size: u64,
+    file_path: []const u8,
     allocator: std.mem.Allocator,
 ) !std.ArrayList(TensorConfig) {
+    var file: std.fs.File = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
+    var buffer: [1024]u8 = undefined;
+    var file_reader = file.reader(&buffer);
+
+    const header_size = std.mem.readInt(u64, try file_reader.interface.takeArray(8), .little);
+    std.debug.print("Header size: {any}\n", .{header_size});
+
     var tensor_configs = try std.ArrayList(TensorConfig).initCapacity(allocator, 1000000);
     errdefer tensor_configs.deinit(allocator);
 
-    const header_buf = try file_reader.takeArray(header_size);
+    const header_buf = try file_reader.interface.readAlloc(allocator, header_size);
+    defer allocator.free(header_buf);
 
     const parsed_json = try std.json.parseFromSlice(std.json.Value, allocator, header_buf, .{});
     defer parsed_json.deinit();
@@ -107,14 +107,14 @@ const ParsedTensorConfig = struct {
 };
 
 fn read_tensor_values(
-    file_reader: []const u8,
+    file_reader: std.fs.File.Reader,
     header_size: u64,
     tensor_config: TensorConfig,
 ) []const u8 {
     const start_offset = 8 + header_size + tensor_config.data_offsets[0];
-    try file_reader.seekTo(start_offset);
+    try file_reader.interface.seekTo(start_offset);
     const end_offset = 8 + header_size + tensor_config.data_offsets[1];
-    try file_reader.seekTo(end_offset);
+    try file_reader.interface.seekTo(end_offset);
     const tensor_values_buf = try file_reader.takeArray(end_offset - start_offset);
     return tensor_values_buf;
 }

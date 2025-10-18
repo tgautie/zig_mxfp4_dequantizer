@@ -54,6 +54,8 @@ fn parse_tensor_configs(
 
     const header_buf = file_buffer[8 .. 8 + header_size];
 
+    std.debug.print("Header: {s}\n", .{header_buf});
+
     const parsed_json = try std.json.parseFromSlice(std.json.Value, allocator, header_buf, .{});
     defer parsed_json.deinit();
     const root = parsed_json.value;
