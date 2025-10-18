@@ -1,6 +1,7 @@
 const std = @import("std");
 
 pub fn main() void {
+    // First implementation
     const block_length = 32;
     const block_buf: [block_length / 2]u8 = [_]u8{ 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF };
 
@@ -19,9 +20,13 @@ pub fn main() void {
     const scale_vec: @Vector(block_length, f32) = @splat(scale_f32);
     const decoded_mxfp4_vec = f32_vec * scale_vec;
     std.debug.print("Decoded MXFP4 vector: {any}\n", .{decoded_mxfp4_vec});
+
+    // More efficient implementation
+    const decoded_mxfp4_vec_more_efficient = decode_fp4_block_as_fp32_vec(block_length, block_buf);
+    std.debug.print("Decoded F32 vector more efficient: {any}\n", .{decoded_mxfp4_vec_more_efficient});
 }
 
-const fp4_to_f32_decode_table = [_]f32{
+const fp4_to_f32_decode_table = [16]f32{
     0.0,  0.5,  1.0,  1.5,
     2.0,  3.0,  4.0,  6.0,
     0.0,  -0.5, -1.0, -1.5,
@@ -47,6 +52,27 @@ fn fp4_to_f32_vec(comptime block_length: usize, fp4: @Vector(block_length, u4)) 
         result[i] = fp4_to_f32_decode_table[fp4[i]];
     }
     return result;
+}
+
+fn decode_fp4_block_as_fp32_vec(
+    comptime block_length: usize,
+    buffer: [block_length / 2]u8,
+) @Vector(block_length, f32) {
+    const packed_vec: @Vector(block_length / 2, u8) = buffer;
+
+    const low_nibbles = packed_vec & @as(@Vector(block_length / 2, u8), @splat(0x0F));
+    const high_nibbles = (packed_vec >> @splat(4)) & @as(@Vector(block_length / 2, u8), @splat(0x0F));
+
+    var output: @Vector(block_length, f32) = undefined;
+
+    // Decode using direct table lookup (compiler will optimize)
+    comptime var i = 0;
+    inline while (i < block_length / 2) : (i += 1) {
+        output[i * 2] = fp4_to_f32_decode_table[high_nibbles[i]];
+        output[i * 2 + 1] = fp4_to_f32_decode_table[low_nibbles[i]];
+    }
+
+    return output;
 }
 
 fn e8m0_to_f32(x: u8) f32 {
