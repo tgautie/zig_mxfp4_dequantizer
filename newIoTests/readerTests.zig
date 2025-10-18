@@ -84,7 +84,7 @@ fn test_reader_allocating() !void {
 }
 
 fn test_reader_discarding() !void {
-    var file: std.fs.File = try std.fs.cwd().openFile("newReaderTests/test.txt", .{ .mode = .read_only });
+    var file: std.fs.File = try std.fs.cwd().openFile("newIoTests/test.txt", .{ .mode = .read_only });
     var buffer: [1024]u8 = undefined;
     var file_reader = file.reader(&buffer);
 
