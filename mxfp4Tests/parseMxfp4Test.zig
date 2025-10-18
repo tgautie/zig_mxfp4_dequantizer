@@ -24,6 +24,10 @@ pub fn main() void {
     // More efficient implementation
     const decoded_mxfp4_vec_more_efficient = decode_fp4_block_as_fp32_vec(block_length, block_buf);
     std.debug.print("Decoded F32 vector more efficient: {any}\n", .{decoded_mxfp4_vec_more_efficient});
+
+    // Simpler version
+    const decoded_mxfp4_vec_simpler_version = decode_fp4_block_simpler_version(block_length, block_buf);
+    std.debug.print("Decoded F32 vector other version: {any}\n", .{decoded_mxfp4_vec_simpler_version});
 }
 
 const fp4_to_f32_decode_table = [16]f32{
@@ -73,6 +77,16 @@ fn decode_fp4_block_as_fp32_vec(
     }
 
     return output;
+}
+
+fn decode_fp4_block_simpler_version(comptime block_length: usize, block_buf: [block_length / 2]u8) @Vector(block_length, f32) {
+    var result: @Vector(block_length, f32) = undefined;
+    inline for (0..block_length / 2) |i| {
+        const b = block_buf[i];
+        result[i * 2] = fp4_to_f32_decode_table[b >> 4];
+        result[i * 2 + 1] = fp4_to_f32_decode_table[b & 0x0F];
+    }
+    return result;
 }
 
 fn e8m0_to_f32(x: u8) f32 {
