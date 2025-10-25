@@ -38,6 +38,59 @@ pub fn extractMxfp4TensorConfigs(
     return mxfp4_tensor_configs;
 }
 
+test extractMxfp4TensorConfigs {
+    const allocator = std.testing.allocator;
+
+    // Create test data
+    var tensor_configs = try std.ArrayList(safetensors.TensorConfig).initCapacity(allocator, 5);
+    defer {
+        for (tensor_configs.items) |config| {
+            config.deinit(allocator);
+        }
+        tensor_configs.deinit(allocator);
+    }
+
+    // Helper function to create tensor configs
+    const addTensor = struct {
+        fn add(alloc: std.mem.Allocator, configs: *std.ArrayList(safetensors.TensorConfig), name: []const u8, dtype: []const u8, shape: []const u32, offsets: [2]u32) !void {
+            try configs.append(alloc, safetensors.TensorConfig{
+                .tensor_name = try alloc.dupe(u8, name),
+                .dtype = try alloc.dupe(u8, dtype),
+                .shape = try alloc.dupe(u32, shape),
+                .data_absolute_offsets = offsets,
+            });
+        }
+    }.add;
+
+    // Add test tensors
+    try addTensor(allocator, &tensor_configs, "tensor1_blocks", "U8", &[_]u32{ 2, 3 }, [2]u32{ 100, 200 });
+    try addTensor(allocator, &tensor_configs, "tensor1_scales", "F32", &[_]u32{ 1, 1 }, [2]u32{ 50, 100 });
+    try addTensor(allocator, &tensor_configs, "tensor2_blocks", "U8", &[_]u32{ 4, 5 }, [2]u32{ 300, 400 });
+    try addTensor(allocator, &tensor_configs, "tensor2_scales", "F32", &[_]u32{ 1, 1 }, [2]u32{ 250, 300 });
+    try addTensor(allocator, &tensor_configs, "regular_tensor", "F32", &[_]u32{ 2, 3 }, [2]u32{ 500, 600 });
+
+    // Test the function
+    var mxfp4_configs = try extractMxfp4TensorConfigs(allocator, tensor_configs);
+    defer mxfp4_configs.deinit(allocator);
+
+    // Basic validation
+    try std.testing.expectEqual(@as(usize, 2), mxfp4_configs.items.len);
+
+    // Check first config
+    const config1 = mxfp4_configs.items[0];
+    try std.testing.expectEqualStrings("tensor1", config1.mxfp4_tensor_name);
+    try std.testing.expectEqual(@as(u32, 1), config1.blocks_count);
+    try std.testing.expectEqualStrings("F32", config1.scales_dtype);
+    try std.testing.expectEqualStrings("U8", config1.blocks_dtype);
+
+    // Check second config
+    const config2 = mxfp4_configs.items[1];
+    try std.testing.expectEqualStrings("tensor2", config2.mxfp4_tensor_name);
+    try std.testing.expectEqual(@as(u32, 1), config2.blocks_count);
+    try std.testing.expectEqualStrings("F32", config2.scales_dtype);
+    try std.testing.expectEqualStrings("U8", config2.blocks_dtype);
+}
+
 fn getScalesConfigMap(allocator: std.mem.Allocator, tensor_configs: std.ArrayList(safetensors.TensorConfig)) !std.StringHashMap(safetensors.TensorConfig) {
     var scales_map = std.StringHashMap(safetensors.TensorConfig).init(
         allocator,
