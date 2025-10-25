@@ -2,7 +2,7 @@ const std = @import("std");
 const tensorReaders = @import("tensorReaders.zig");
 
 // Insert your safetensors file path here 🙌
-const file_path = "exampleSafetensors/light_with_mxfp4.safetensors";
+const file_path = "testSafetensors/simple_test.safetensors";
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -15,7 +15,7 @@ pub fn main() !void {
 
     for (dequantizedSafetensors.readers.items) |reader| {
         std.debug.print("{s}\n", .{reader.name});
-        const buffer = try reader.interface.takeArray(1000);
+        const buffer = try reader.interface.takeArray(100);
         for (buffer) |b| {
             std.debug.print("{x} ", .{b});
         }
