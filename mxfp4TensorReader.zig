@@ -4,11 +4,15 @@ const mxfp4Dequantization = @import("mxfp4Dequantization.zig");
 
 const Mxfp4TensorConfig = mxfp4Config.Mxfp4TensorConfig;
 
-// Reader interface implementation that dequantizes MXFP4 tensors on the fly, from a file path and a MXFP4 tensor config
+// The size of each decoded f32 block, in bytes
+const decoded_block_byte_size = 4 * mxfp4Dequantization.block_size;
+
+// Reader interface implementation that dequantizes MXFP4 tensors on the fly, from a safetensors file path and a MXFP4 tensor config.
+// The reader provides the byte stream of decoded f32 values.
 pub const DequantizedMxfp4TensorReader = struct {
     dequantized_blocks_count: usize,
     total_blocks_count: usize,
-    current_block: [32]f32,
+    current_block: [decoded_block_byte_size]u8,
     current_block_index: usize,
     scales_reader: std.fs.File.Reader,
     blocks_reader: std.fs.File.Reader,
@@ -25,7 +29,7 @@ pub const DequantizedMxfp4TensorReader = struct {
             .dequantized_blocks_count = 0,
             .total_blocks_count = mxfp4_tensor_config.blocks_count,
             .current_block = undefined,
-            .current_block_index = 32, // Initialize to the block size to trigger dequantization on the first stream call
+            .current_block_index = decoded_block_byte_size, // We initialize to the block size in order to trigger dequantization on the first stream call
             .scales_reader = scales_reader,
             .blocks_reader = blocks_reader,
             .interface = .{
@@ -51,14 +55,14 @@ pub const DequantizedMxfp4TensorReader = struct {
         var total: usize = 0;
 
         while (total < max_bytes) {
-            if (self.current_block_index >= self.current_block.len) {
+            if (self.current_block_index >= decoded_block_byte_size) {
                 self.dequantizeNextBlock() catch |err| switch (err) {
                     error.EndOfStream => return total,
                     else => return err,
                 };
             }
 
-            const remaining_bytes_in_block = self.current_block.len - self.current_block_index;
+            const remaining_bytes_in_block = decoded_block_byte_size - self.current_block_index;
             const bytes_to_write: usize = @min(remaining_bytes_in_block, max_bytes - total);
 
             const slice_to_write = self.current_block[self.current_block_index .. self.current_block_index + bytes_to_write];
@@ -79,7 +83,8 @@ pub const DequantizedMxfp4TensorReader = struct {
         const scale = try self.scales_reader.interface.takeByte();
         const block = try self.blocks_reader.interface.takeArray(16);
         const decoded_mxfp4_block = mxfp4Dequantization.decodeBlock(scale, block.*);
-        self.current_block = decoded_mxfp4_block;
+
+        @memcpy(&self.current_block, std.mem.sliceAsBytes(&decoded_mxfp4_block));
         self.current_block_index = 0;
         self.dequantized_blocks_count += 1;
     }

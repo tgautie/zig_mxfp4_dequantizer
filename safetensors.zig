@@ -17,7 +17,7 @@ pub fn parseHeader(
 
     const header_size = std.mem.readInt(u64, try file_reader.interface.takeArray(8), .little);
 
-    var tensor_configs = try std.ArrayList(TensorConfig).initCapacity(allocator, 1000000);
+    var tensor_configs: std.ArrayList(TensorConfig) = .empty;
     errdefer tensor_configs.deinit(allocator);
 
     const header_buf = try file_reader.interface.readAlloc(allocator, header_size);

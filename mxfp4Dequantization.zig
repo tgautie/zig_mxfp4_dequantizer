@@ -2,7 +2,7 @@ const std = @import("std");
 
 // The MXFP4 spec fixes the block size to 32
 // See: https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
-const block_size = 32;
+pub const block_size = 32;
 
 // Dequantizes a single MXFP4 block (16 bytes) into a vector of 32 float32 values from the u8 scale factor, using SIMD.
 pub fn decodeBlock(scale: u8, block: [block_size / 2]u8) [block_size]f32 {

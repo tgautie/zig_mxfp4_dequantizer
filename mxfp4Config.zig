@@ -19,7 +19,7 @@ pub fn extractMxfp4TensorConfigs(
     var scales_map = try getScalesConfigMap(allocator, tensor_configs);
     defer scales_map.deinit();
 
-    var mxfp4_tensor_configs = try std.ArrayList(Mxfp4TensorConfig).initCapacity(allocator, 100);
+    var mxfp4_tensor_configs: std.ArrayList(Mxfp4TensorConfig) = .empty;
     errdefer mxfp4_tensor_configs.deinit(allocator);
 
     for (tensor_configs.items) |tensor_config| {
