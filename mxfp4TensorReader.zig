@@ -20,9 +20,7 @@ pub const DequantizedMxfp4TensorReader = struct {
     // We keep the last decoded block in memory, in order to stream it byte-by-byte
     current_block: [decoded_block_byte_size]u8,
     current_block_index: usize,
-    // We keep files and buffers alive on the struct
-    scales_file: std.fs.File,
-    blocks_file: std.fs.File,
+    // We keep buffers alive on the struct
     scales_buffer: [file_reader_buffer_size]u8,
     blocks_buffer: [file_reader_buffer_size]u8,
     scales_reader: std.fs.File.Reader,
@@ -39,13 +37,13 @@ pub const DequantizedMxfp4TensorReader = struct {
         result.total_blocks_count = mxfp4_tensor_config.blocks_count;
         result.current_block_index = decoded_block_byte_size; // Initialized to the end of the block, to be filled in the first dequantization
 
-        result.scales_file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
-        result.scales_reader = result.scales_file.reader(&result.scales_buffer);
+        const scales_file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
+        result.scales_reader = scales_file.reader(&result.scales_buffer);
         try result.scales_reader.seekTo(mxfp4_tensor_config.scales_absolute_offsets[0]);
         std.debug.print("Scales reader peek byte: {any}\n", .{result.scales_reader.interface.peekByte()});
 
-        result.blocks_file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
-        result.blocks_reader = result.blocks_file.reader(&result.blocks_buffer);
+        const blocks_file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
+        result.blocks_reader = blocks_file.reader(&result.blocks_buffer);
         try result.blocks_reader.seekTo(mxfp4_tensor_config.blocks_absolute_offsets[0]);
         std.debug.print("Blocks reader peek byte: {any}\n", .{result.blocks_reader.interface.peekByte()});
 
