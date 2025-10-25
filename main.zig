@@ -7,7 +7,8 @@ const safetensors = @import("safetensors.zig");
 const file_path = "exampleSafetensors/test_mxfp4.safetensors";
 
 pub fn main() !void {
-    const allocator = std.heap.page_allocator;
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
 
     var tensor_configs = try safetensors.parseHeader(file_path, allocator);
     defer tensor_configs.deinit(allocator);
