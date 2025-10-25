@@ -15,7 +15,7 @@ pub const DequantizedMxfp4TensorReader = struct {
     interface: std.Io.Reader,
 
     // Initializes the reader with the buffer, file path, and MXFP4 tensor config
-    pub fn init(buffer: []u8, file_path: []const u8, mxfp4_tensor_config: Mxfp4TensorConfig) DequantizedMxfp4TensorReader {
+    pub fn init(buffer: []u8, file_path: []const u8, mxfp4_tensor_config: Mxfp4TensorConfig) !DequantizedMxfp4TensorReader {
         var scales_reader = try getReader(file_path, mxfp4_tensor_config, false);
         _ = &scales_reader;
         var blocks_reader = try getReader(file_path, mxfp4_tensor_config, true);
