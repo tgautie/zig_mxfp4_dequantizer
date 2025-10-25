@@ -11,7 +11,7 @@ pub fn parseHeader(
     file_path: []const u8,
     allocator: std.mem.Allocator,
 ) !std.ArrayList(TensorConfig) {
-    var file: std.fs.File = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
+    var file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
     var buffer: [1024]u8 = undefined;
     var file_reader = file.reader(&buffer);
 
