@@ -37,7 +37,7 @@ pub const DequantizedMxfp4TensorReader = struct {
         result.name = mxfp4_tensor_config.mxfp4_tensor_name;
         result.dequantized_blocks_count = 0;
         result.total_blocks_count = mxfp4_tensor_config.blocks_count;
-        result.current_block_index = decoded_block_byte_size;
+        result.current_block_index = decoded_block_byte_size; // Initialized to the end of the block, to be filled in the first dequantization
 
         result.scales_file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
         result.scales_reader = result.scales_file.reader(&result.scales_buffer);
