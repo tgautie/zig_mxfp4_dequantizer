@@ -12,7 +12,7 @@ pub const Mxfp4TensorConfig = struct {
     blocks_absolute_offsets: [2]u32,
 };
 
-pub fn getMxfp4TensorConfigs(
+pub fn extractMxfp4TensorConfigs(
     allocator: std.mem.Allocator,
     tensor_configs: std.ArrayList(safetensors.TensorConfig),
 ) !std.ArrayList(Mxfp4TensorConfig) {
