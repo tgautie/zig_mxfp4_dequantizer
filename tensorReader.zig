@@ -126,7 +126,9 @@ pub const DequantizedMxfp4TensorReader = struct {
 test DequantizedMxfp4TensorReader {
     const allocator = std.testing.allocator;
 
-    // Hardcode the MXFP4 tensor configuration for the test
+    const test_file_path = "testSafetensors/simple_test.safetensors";
+
+    // Hardcoded MXFP4 tensor config corresponding to the test file
     const mxfp4_config = Mxfp4TensorConfig{
         .mxfp4_tensor_name = "tensor_with_ones",
         .blocks_count = 1,
@@ -138,19 +140,17 @@ test DequantizedMxfp4TensorReader {
         .blocks_absolute_offsets = [2]u32{ 320, 336 },
     };
 
-    // Create reader buffer
     const reader_buffer = try allocator.alloc(u8, 4096);
     defer allocator.free(reader_buffer);
 
-    // Initialize the reader
-    var reader = try DequantizedMxfp4TensorReader.init(reader_buffer, "testSafetensors/simple_test.safetensors", allocator, mxfp4_config);
+    var reader = try DequantizedMxfp4TensorReader.init(reader_buffer, test_file_path, allocator, mxfp4_config);
     defer reader.deinit(allocator);
 
     const output_buffer = try reader.interface.takeArray(10);
     const expected: [10]u8 = .{
-        0x00, 0x00, 0x00, 0x00, // 0.0f32
-        0x00, 0x00, 0x40, 0x00, // very small positive number
-        0x00, 0x00, // partial float
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x40, 0x00,
+        0x00, 0x00,
     };
 
     inline for (0..10) |i| {
