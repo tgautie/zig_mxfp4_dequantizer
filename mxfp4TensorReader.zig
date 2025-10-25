@@ -73,6 +73,8 @@ pub const DequantizedMxfp4TensorReader = struct {
         const max_bytes: usize = @intFromEnum(limit);
         var total: usize = 0;
 
+        std.debug.print("Stream {s}: {d}, {d}\n", .{ self.name, total, max_bytes });
+
         while (total < max_bytes) {
             if (self.current_block_index >= decoded_block_byte_size) {
                 self.dequantizeNextBlock() catch |err| switch (err) {
@@ -95,17 +97,23 @@ pub const DequantizedMxfp4TensorReader = struct {
     }
 
     fn dequantizeNextBlock(self: *DequantizedMxfp4TensorReader) !void {
+        std.debug.print("Dequantize next block {s}\n", .{self.name});
         if (self.isCompleted()) {
             return error.EndOfStream;
         }
 
         const scale = try self.scales_reader.interface.takeByte();
+        std.debug.print("Scale: {d}\n", .{scale});
         const block = try self.blocks_reader.interface.takeArray(16);
+        std.debug.print("Block: {x}\n", .{block});
         const decoded_mxfp4_block = mxfp4Dequantization.decodeBlock(scale, block.*);
+        std.debug.print("Decoded block: {any}\n", .{decoded_mxfp4_block});
 
         @memcpy(&self.current_block, std.mem.sliceAsBytes(&decoded_mxfp4_block));
+        std.debug.print("Copied block to current block: {any}\n", .{self.current_block});
         self.current_block_index = 0;
         self.dequantized_blocks_count += 1;
+        std.debug.print("Dequantized block {s}: {d}\n", .{ self.name, self.dequantized_blocks_count });
     }
 
     fn isCompleted(self: *DequantizedMxfp4TensorReader) bool {

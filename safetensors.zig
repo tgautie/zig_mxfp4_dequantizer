@@ -17,6 +17,8 @@ pub fn parseHeader(
 
     const header_size = std.mem.readInt(u64, try file_reader.interface.takeArray(8), .little);
 
+    std.debug.print("Header size: {d}\n", .{header_size});
+
     var tensor_configs: std.ArrayList(TensorConfig) = .empty;
     errdefer tensor_configs.deinit(allocator);
 
@@ -54,6 +56,10 @@ fn parseTensorConfig(
 ) !TensorConfig {
     const parsed_tensor_config = try std.json.parseFromValue(ParsedTensorConfig, allocator, json_config, .{});
     defer parsed_tensor_config.deinit();
+
+    if (std.mem.eql(u8, tensor_name, "tensor_with_zeros_blocks")) {
+        std.debug.print("Tensor config {s}: {any}\n", .{ tensor_name, parsed_tensor_config.value.data_offsets });
+    }
 
     const name_copy = try allocator.dupe(u8, tensor_name);
     const dtype_copy = try allocator.dupe(u8, parsed_tensor_config.value.dtype);
