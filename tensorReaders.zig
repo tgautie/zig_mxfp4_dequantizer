@@ -3,6 +3,8 @@ const tensorReader = @import("tensorReader.zig");
 const mxfp4Config = @import("mxfp4Config.zig");
 const safetensors = @import("safetensors.zig");
 
+// This is the entry point to the library.
+// On initialization, this struct extracts the MXFP4 tensor configs from the safetensors file and provides a DequantizedMxfp4TensorReader for each MXFP4 tensor.
 pub const DequantizedMxfp4TensorReaders = struct {
     readers: std.ArrayList(*tensorReader.DequantizedMxfp4TensorReader),
     buffers: std.ArrayList([]u8),

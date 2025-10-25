@@ -4,14 +4,14 @@ const mxfp4Dequantization = @import("dequantization.zig");
 
 const Mxfp4TensorConfig = mxfp4Config.Mxfp4TensorConfig;
 
-// The size of each decoded f32 block, in bytes
+// The size of the post-decoding f32 block, in bytes
 const decoded_block_byte_size = 4 * mxfp4Dequantization.block_size;
 
-// Size of the file reader buffers used internally to stream the blocks and scales from the file
+// Size of the file reader buffers used internally to stream the blocks and scales from the provided file
 const file_reader_buffer_size = 1024;
 
-// Reader interface implementation that dequantizes MXFP4 tensors on the fly, from a safetensors file path and a MXFP4 tensor config.
-// The reader provides the byte stream of decoded f32 values.
+// This is an implementation of the std.Io.Reader interface, that dequantizes MXFP4 tensors on the fly.
+// The reader provides access to the byte stream of decoded f32 values.
 pub const DequantizedMxfp4TensorReader = struct {
     name: []const u8,
     // We keep track of the number of dequantized blocks and the total number of blocks

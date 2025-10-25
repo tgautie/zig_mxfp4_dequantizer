@@ -1,6 +1,7 @@
 const std = @import("std");
 const tensorReaders = @import("tensorReaders.zig");
 
+// Insert your safetensors file path here 🙌
 const file_path = "exampleSafetensors/light_with_mxfp4.safetensors";
 
 pub fn main() !void {
@@ -10,7 +11,7 @@ pub fn main() !void {
     var dequantizedSafetensors = try tensorReaders.DequantizedMxfp4TensorReaders.init(allocator, file_path);
     defer dequantizedSafetensors.deinit(allocator);
 
-    std.debug.print("Dequantizing on the fly the following MXFP4 tensors in provided file:\n", .{});
+    std.debug.print("Dequantizing on the fly the following MXFP4 tensors found in the provided file:\n", .{});
 
     for (dequantizedSafetensors.readers.items) |reader| {
         std.debug.print("{s}\n", .{reader.name});
