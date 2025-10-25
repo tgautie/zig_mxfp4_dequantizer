@@ -25,7 +25,7 @@ pub fn main() !void {
     defer {
         // Clean up all readers and their associated buffers
         for (readers.items) |reader| {
-            reader.deinit();
+            reader.deinit(allocator);
         }
         readers.deinit(allocator);
     }
@@ -43,14 +43,8 @@ pub fn main() !void {
         const reader_buffer = try allocator.alloc(u8, 4096);
         try all_buffers.append(allocator, reader_buffer);
 
-        const scales_input_buffer = try allocator.alloc(u8, 4096);
-        try all_buffers.append(allocator, scales_input_buffer);
-
-        const blocks_input_buffer = try allocator.alloc(u8, 4096);
-        try all_buffers.append(allocator, blocks_input_buffer);
-
         const reader = try allocator.create(mxfp4TensorReader.DequantizedMxfp4TensorReader);
-        reader.* = try mxfp4TensorReader.DequantizedMxfp4TensorReader.init(reader_buffer, file_path, scales_input_buffer, blocks_input_buffer, mxfp4_tensor_config);
+        reader.* = try mxfp4TensorReader.DequantizedMxfp4TensorReader.init(reader_buffer, file_path, allocator, mxfp4_tensor_config);
 
         try readers.append(allocator, reader);
     }

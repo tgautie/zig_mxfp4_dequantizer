@@ -20,14 +20,21 @@ pub const DequantizedMxfp4TensorReader = struct {
     // We keep the last decoded block in memory, in order to stream it byte-by-byte
     current_block: [decoded_block_byte_size]u8,
     current_block_index: usize,
+    // The file readers for the scales and blocks input files
     scales_reader: std.fs.File.Reader,
     blocks_reader: std.fs.File.Reader,
+    // Heap-allocated buffers for the scales and blocks input readers
+    scales_input_buffer: []u8,
+    blocks_input_buffer: []u8,
     // std.Io.Reader interface 🌟
     interface: std.Io.Reader,
 
     // Initializes the reader with the buffer, file path, and MXFP4 tensor config
-    pub fn init(reader_buffer: []u8, file_path: []const u8, scales_input_buffer: []u8, blocks_input_buffer: []u8, mxfp4_tensor_config: Mxfp4TensorConfig) !DequantizedMxfp4TensorReader {
+    pub fn init(reader_buffer: []u8, file_path: []const u8, allocator: std.mem.Allocator, mxfp4_tensor_config: Mxfp4TensorConfig) !DequantizedMxfp4TensorReader {
         var result: DequantizedMxfp4TensorReader = undefined;
+
+        result.scales_input_buffer = try allocator.alloc(u8, file_reader_buffer_size);
+        result.blocks_input_buffer = try allocator.alloc(u8, file_reader_buffer_size);
 
         result.name = mxfp4_tensor_config.mxfp4_tensor_name;
         result.dequantized_blocks_count = 0;
@@ -35,12 +42,12 @@ pub const DequantizedMxfp4TensorReader = struct {
         result.current_block_index = decoded_block_byte_size; // Initialized to the end of the block, to be filled in the first dequantization
 
         const scales_file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
-        result.scales_reader = scales_file.reader(scales_input_buffer);
+        result.scales_reader = scales_file.reader(result.scales_input_buffer);
         try result.scales_reader.seekTo(mxfp4_tensor_config.scales_absolute_offsets[0]);
         std.debug.print("Scales reader peek byte: {any}\n", .{result.scales_reader.interface.peekByte()});
 
         const blocks_file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
-        result.blocks_reader = blocks_file.reader(blocks_input_buffer);
+        result.blocks_reader = blocks_file.reader(result.blocks_input_buffer);
         try result.blocks_reader.seekTo(mxfp4_tensor_config.blocks_absolute_offsets[0]);
         std.debug.print("Blocks reader peek byte: {any}\n", .{result.blocks_reader.interface.peekByte()});
 
@@ -60,9 +67,9 @@ pub const DequantizedMxfp4TensorReader = struct {
     }
 
     // Cleanup method to properly close file handles
-    pub fn deinit(self: *DequantizedMxfp4TensorReader) void {
-        self.scales_file.close();
-        self.blocks_file.close();
+    pub fn deinit(self: *DequantizedMxfp4TensorReader, allocator: std.mem.Allocator) void {
+        allocator.free(self.scales_input_buffer);
+        allocator.free(self.blocks_input_buffer);
     }
 
     /// The stream method fills up to `limit` bytes into the Writer `w` from the dequantized 32-float blocks.
