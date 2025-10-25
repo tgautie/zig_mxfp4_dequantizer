@@ -36,7 +36,7 @@ pub const DequantizedMxfp4TensorReader = struct {
         result.scales_input_buffer = try allocator.alloc(u8, file_reader_buffer_size);
         result.blocks_input_buffer = try allocator.alloc(u8, file_reader_buffer_size);
 
-        result.name = mxfp4_tensor_config.mxfp4_tensor_name;
+        result.name = try allocator.dupe(u8, mxfp4_tensor_config.mxfp4_tensor_name);
         result.dequantized_blocks_count = 0;
         result.total_blocks_count = mxfp4_tensor_config.blocks_count;
         result.current_block_index = decoded_block_byte_size; // Initialized to the end of the block, to be filled in the first dequantization
@@ -66,6 +66,7 @@ pub const DequantizedMxfp4TensorReader = struct {
 
     // Cleanup method to properly close file handles
     pub fn deinit(self: *DequantizedMxfp4TensorReader, allocator: std.mem.Allocator) void {
+        allocator.free(self.name);
         allocator.free(self.scales_input_buffer);
         allocator.free(self.blocks_input_buffer);
     }

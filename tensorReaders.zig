@@ -19,10 +19,6 @@ pub const DequantizedMxfp4TensorReaders = struct {
         var mxfp4_tensor_configs = try mxfp4Config.extractFromTensorConfigs(allocator, tensor_configs);
         defer mxfp4_tensor_configs.deinit(allocator);
 
-        for (mxfp4_tensor_configs.items) |mxfp4_tensor_config| {
-            std.debug.print("MXFP4 tensor config {s}: {any}\n", .{ mxfp4_tensor_config.mxfp4_tensor_name, mxfp4_tensor_config });
-        }
-
         var readers: std.ArrayList(*tensorReader.DequantizedMxfp4TensorReader) = .empty;
         var buffers: std.ArrayList([]u8) = .empty;
 
