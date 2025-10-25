@@ -20,17 +20,37 @@ pub fn main() !void {
         std.debug.print("MXFP4 tensor config {s}: {any}\n", .{ mxfp4_tensor_config.mxfp4_tensor_name, mxfp4_tensor_config });
     }
 
+    // Store all allocated buffers and readers for proper cleanup
     var readers: std.ArrayList(*mxfp4TensorReader.DequantizedMxfp4TensorReader) = .empty;
-    errdefer readers.deinit(allocator);
+    defer {
+        // Clean up all readers and their associated buffers
+        for (readers.items) |reader| {
+            reader.deinit();
+        }
+        readers.deinit(allocator);
+    }
+
+    // Store all allocated buffers for cleanup
+    var all_buffers: std.ArrayList([]u8) = .empty;
+    defer {
+        for (all_buffers.items) |buffer| {
+            allocator.free(buffer);
+        }
+        all_buffers.deinit(allocator);
+    }
 
     for (mxfp4_tensor_configs.items) |mxfp4_tensor_config| {
-        const buffer = try allocator.alloc(u8, 4096);
-        errdefer allocator.free(buffer);
+        const reader_buffer = try allocator.alloc(u8, 4096);
+        try all_buffers.append(allocator, reader_buffer);
+
+        const scales_input_buffer = try allocator.alloc(u8, 4096);
+        try all_buffers.append(allocator, scales_input_buffer);
+
+        const blocks_input_buffer = try allocator.alloc(u8, 4096);
+        try all_buffers.append(allocator, blocks_input_buffer);
 
         const reader = try allocator.create(mxfp4TensorReader.DequantizedMxfp4TensorReader);
-        errdefer allocator.destroy(reader);
-
-        reader.* = try mxfp4TensorReader.DequantizedMxfp4TensorReader.init(buffer, file_path, mxfp4_tensor_config);
+        reader.* = try mxfp4TensorReader.DequantizedMxfp4TensorReader.init(reader_buffer, file_path, scales_input_buffer, blocks_input_buffer, mxfp4_tensor_config);
 
         try readers.append(allocator, reader);
     }

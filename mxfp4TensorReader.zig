@@ -20,16 +20,13 @@ pub const DequantizedMxfp4TensorReader = struct {
     // We keep the last decoded block in memory, in order to stream it byte-by-byte
     current_block: [decoded_block_byte_size]u8,
     current_block_index: usize,
-    // We keep buffers alive on the struct
-    scales_buffer: [file_reader_buffer_size]u8,
-    blocks_buffer: [file_reader_buffer_size]u8,
     scales_reader: std.fs.File.Reader,
     blocks_reader: std.fs.File.Reader,
     // std.Io.Reader interface 🌟
     interface: std.Io.Reader,
 
     // Initializes the reader with the buffer, file path, and MXFP4 tensor config
-    pub fn init(buffer: []u8, file_path: []const u8, mxfp4_tensor_config: Mxfp4TensorConfig) !DequantizedMxfp4TensorReader {
+    pub fn init(reader_buffer: []u8, file_path: []const u8, scales_input_buffer: []u8, blocks_input_buffer: []u8, mxfp4_tensor_config: Mxfp4TensorConfig) !DequantizedMxfp4TensorReader {
         var result: DequantizedMxfp4TensorReader = undefined;
 
         result.name = mxfp4_tensor_config.mxfp4_tensor_name;
@@ -38,18 +35,18 @@ pub const DequantizedMxfp4TensorReader = struct {
         result.current_block_index = decoded_block_byte_size; // Initialized to the end of the block, to be filled in the first dequantization
 
         const scales_file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
-        result.scales_reader = scales_file.reader(&result.scales_buffer);
+        result.scales_reader = scales_file.reader(scales_input_buffer);
         try result.scales_reader.seekTo(mxfp4_tensor_config.scales_absolute_offsets[0]);
         std.debug.print("Scales reader peek byte: {any}\n", .{result.scales_reader.interface.peekByte()});
 
         const blocks_file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
-        result.blocks_reader = blocks_file.reader(&result.blocks_buffer);
+        result.blocks_reader = blocks_file.reader(blocks_input_buffer);
         try result.blocks_reader.seekTo(mxfp4_tensor_config.blocks_absolute_offsets[0]);
         std.debug.print("Blocks reader peek byte: {any}\n", .{result.blocks_reader.interface.peekByte()});
 
         result.interface = .{
             .vtable = &vtable,
-            .buffer = buffer,
+            .buffer = reader_buffer,
             .seek = 0,
             .end = 0,
         };
