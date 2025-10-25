@@ -7,7 +7,7 @@ pub const TensorConfig = struct {
     data_absolute_offsets: [2]u32,
 };
 
-pub fn parse_safetensors_header(
+pub fn parseHeader(
     file_path: []const u8,
     allocator: std.mem.Allocator,
 ) !std.ArrayList(TensorConfig) {
@@ -39,14 +39,14 @@ pub fn parse_safetensors_header(
         }
 
         const value = entry.value_ptr.*;
-        const tensor_config = try parse_tensor_config(allocator, tensor_name, value, header_size);
+        const tensor_config = try parseTensorConfig(allocator, tensor_name, value, header_size);
         try tensor_configs.append(allocator, tensor_config);
     }
 
     return tensor_configs;
 }
 
-fn parse_tensor_config(
+fn parseTensorConfig(
     allocator: std.mem.Allocator,
     tensor_name: []const u8,
     json_config: std.json.Value,
