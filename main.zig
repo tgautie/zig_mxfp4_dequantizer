@@ -4,7 +4,7 @@ const mxfp4Config = @import("mxfp4Config.zig");
 const safetensors = @import("safetensors.zig");
 
 // Insert your safetensors file path here 🙌
-const file_path = "exampleSafetensors/only_zeros.safetensors";
+const file_path = "exampleSafetensors/simple_test.safetensors";
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -20,19 +20,22 @@ pub fn main() !void {
         std.debug.print("MXFP4 tensor config {s}: {any}\n", .{ mxfp4_tensor_config.mxfp4_tensor_name, mxfp4_tensor_config });
     }
 
-    var readers: std.ArrayList(mxfp4TensorReader.DequantizedMxfp4TensorReader) = .empty;
+    var readers: std.ArrayList(*mxfp4TensorReader.DequantizedMxfp4TensorReader) = .empty;
     errdefer readers.deinit(allocator);
 
     for (mxfp4_tensor_configs.items) |mxfp4_tensor_config| {
         const buffer = try allocator.alloc(u8, 4096);
         errdefer allocator.free(buffer);
 
-        var reader = try mxfp4TensorReader.DequantizedMxfp4TensorReader.init(buffer, file_path, mxfp4_tensor_config);
-        _ = &reader;
+        const reader = try allocator.create(mxfp4TensorReader.DequantizedMxfp4TensorReader);
+        errdefer allocator.destroy(reader);
+
+        reader.* = try mxfp4TensorReader.DequantizedMxfp4TensorReader.init(buffer, file_path, mxfp4_tensor_config);
+
         try readers.append(allocator, reader);
     }
 
-    for (readers.items) |*reader| {
+    for (readers.items) |reader| {
         std.debug.print("Reader {s}: {d} blocks to dequantize\n", .{ reader.name, reader.total_blocks_count });
         std.debug.print("Peek byte in the two readers: scale {any}, block {any}\n", .{ reader.scales_reader.interface.peekByte(), reader.blocks_reader.interface.peekByte() });
         const buffer = try reader.interface.takeArray(100);
