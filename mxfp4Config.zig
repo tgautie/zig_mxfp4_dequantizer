@@ -16,10 +16,10 @@ pub fn extractMxfp4TensorConfigs(
     allocator: std.mem.Allocator,
     tensor_configs: std.ArrayList(safetensors.TensorConfig),
 ) !std.ArrayList(Mxfp4TensorConfig) {
-    const scales_map = try getScalesConfigMap(allocator, tensor_configs);
+    var scales_map = try getScalesConfigMap(allocator, tensor_configs);
     defer scales_map.deinit();
 
-    var mxfp4_tensor_configs = try std.ArrayList(Mxfp4TensorConfig).initCapacity(allocator, 1000000);
+    var mxfp4_tensor_configs = try std.ArrayList(Mxfp4TensorConfig).initCapacity(allocator, 100);
     errdefer mxfp4_tensor_configs.deinit(allocator);
 
     for (tensor_configs.items) |tensor_config| {
@@ -46,6 +46,8 @@ fn getScalesConfigMap(allocator: std.mem.Allocator, tensor_configs: std.ArrayLis
     for (tensor_configs.items) |tensor_config| {
         if (isMxfp4ScalesTensorName(tensor_config.tensor_name)) try scales_map.put(getMxfp4TensorName(tensor_config.tensor_name), tensor_config);
     }
+
+    return scales_map;
 }
 
 fn isMxfp4ScalesTensorName(tensor_name: []const u8) bool {
