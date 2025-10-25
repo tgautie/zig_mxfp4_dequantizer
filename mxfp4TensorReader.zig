@@ -10,22 +10,24 @@ pub const DequantizedMxfp4TensorReader = struct {
     total_blocks_count: usize,
     current_block: [32]f32,
     current_block_index: usize,
-    scales_reader: *std.fs.File.Reader,
-    blocks_reader: *std.fs.File.Reader,
+    scales_reader: std.fs.File.Reader,
+    blocks_reader: std.fs.File.Reader,
     interface: std.Io.Reader,
 
     // Initializes the reader with the buffer, file path, and MXFP4 tensor config
     pub fn init(buffer: []u8, file_path: []const u8, mxfp4_tensor_config: Mxfp4TensorConfig) DequantizedMxfp4TensorReader {
         var scales_reader = try getReader(file_path, mxfp4_tensor_config, false);
+        _ = &scales_reader;
         var blocks_reader = try getReader(file_path, mxfp4_tensor_config, true);
+        _ = &blocks_reader;
 
         return .{
             .dequantized_blocks_count = 0,
             .total_blocks_count = mxfp4_tensor_config.blocks_count,
             .current_block = undefined,
             .current_block_index = 32, // Initialize to the block size to trigger dequantization on the first stream call
-            .scales_reader = &scales_reader,
-            .blocks_reader = &blocks_reader,
+            .scales_reader = scales_reader,
+            .blocks_reader = blocks_reader,
             .interface = .{
                 .vtable = &vtable,
                 .buffer = buffer,
