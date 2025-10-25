@@ -23,11 +23,18 @@ pub fn main() !void {
         const buffer = try allocator.alloc(u8, 4096);
         errdefer allocator.free(buffer);
 
-        const reader = try mxfp4TensorReader.DequantizedMxfp4TensorReader.init(buffer, file_path, mxfp4_tensor_config);
+        var reader = try mxfp4TensorReader.DequantizedMxfp4TensorReader.init(buffer, file_path, mxfp4_tensor_config);
+        _ = &reader;
         try readers.append(allocator, reader);
     }
 
-    for (readers.items) |reader| {
-        std.debug.print("Reader: {any}\n", .{reader.total_blocks_count});
+    for (readers.items) |*reader| {
+        std.debug.print("Reader {s}: {d}, {d}, {d}\n", .{ reader.name, reader.total_blocks_count, reader.dequantized_blocks_count, reader.current_block_index });
+        std.debug.print("Peek byte in the two readers: scale {any}, block {any}\n", .{ reader.scales_reader.interface.peekByte(), reader.blocks_reader.interface.peekByte() });
+        const buffer = try reader.interface.takeArray(100);
+        for (buffer) |b| {
+            std.debug.print("{x} ", .{b});
+        }
+        std.debug.print("\n", .{});
     }
 }

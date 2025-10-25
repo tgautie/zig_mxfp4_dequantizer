@@ -10,26 +10,45 @@ const decoded_block_byte_size = 4 * mxfp4Dequantization.block_size;
 // Reader interface implementation that dequantizes MXFP4 tensors on the fly, from a safetensors file path and a MXFP4 tensor config.
 // The reader provides the byte stream of decoded f32 values.
 pub const DequantizedMxfp4TensorReader = struct {
+    name: []const u8,
+    // We keep track of the number of dequantized blocks and the total number of blocks
     dequantized_blocks_count: usize,
     total_blocks_count: usize,
+    // We keep the last decoded block in memory, in order to stream it byte-by-byte
     current_block: [decoded_block_byte_size]u8,
     current_block_index: usize,
+    // We keep files and buffers alive on the struct
+    scales_file: std.fs.File,
+    blocks_file: std.fs.File,
+    scales_buffer: [1024]u8,
+    blocks_buffer: [1024]u8,
     scales_reader: std.fs.File.Reader,
     blocks_reader: std.fs.File.Reader,
+    // std.Io.Reader interface 🌟
     interface: std.Io.Reader,
 
     // Initializes the reader with the buffer, file path, and MXFP4 tensor config
     pub fn init(buffer: []u8, file_path: []const u8, mxfp4_tensor_config: Mxfp4TensorConfig) !DequantizedMxfp4TensorReader {
-        var scales_reader = try getReader(file_path, mxfp4_tensor_config, false);
-        _ = &scales_reader;
-        var blocks_reader = try getReader(file_path, mxfp4_tensor_config, true);
-        _ = &blocks_reader;
+        var scales_file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
+        var scales_buffer: [1024]u8 = undefined;
+        var scales_reader = scales_file.reader(&scales_buffer);
+        try scales_reader.seekTo(mxfp4_tensor_config.scales_absolute_offsets[0]);
+
+        var blocks_file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
+        var blocks_buffer: [1024]u8 = undefined;
+        var blocks_reader = blocks_file.reader(&blocks_buffer);
+        try blocks_reader.seekTo(mxfp4_tensor_config.blocks_absolute_offsets[0]);
 
         return .{
+            .name = mxfp4_tensor_config.mxfp4_tensor_name,
             .dequantized_blocks_count = 0,
             .total_blocks_count = mxfp4_tensor_config.blocks_count,
             .current_block = undefined,
             .current_block_index = decoded_block_byte_size, // We initialize to the block size in order to trigger dequantization on the first stream call
+            .scales_file = scales_file,
+            .blocks_file = blocks_file,
+            .scales_buffer = scales_buffer,
+            .blocks_buffer = blocks_buffer,
             .scales_reader = scales_reader,
             .blocks_reader = blocks_reader,
             .interface = .{
