@@ -12,7 +12,7 @@ pub const Mxfp4TensorConfig = struct {
     blocks_absolute_offsets: [2]u32,
 };
 
-pub fn extractMxfp4TensorConfigs(
+pub fn extractFromTensorConfigs(
     allocator: std.mem.Allocator,
     tensor_configs: std.ArrayList(safetensors.TensorConfig),
 ) !std.ArrayList(Mxfp4TensorConfig) {
@@ -38,7 +38,7 @@ pub fn extractMxfp4TensorConfigs(
     return mxfp4_tensor_configs;
 }
 
-test extractMxfp4TensorConfigs {
+test extractFromTensorConfigs {
     const allocator = std.testing.allocator;
 
     // Create test data
@@ -70,7 +70,7 @@ test extractMxfp4TensorConfigs {
     try addTensor(allocator, &tensor_configs, "regular_tensor", "F32", &[_]u32{ 2, 3 }, [2]u32{ 500, 600 });
 
     // Test the function
-    var mxfp4_configs = try extractMxfp4TensorConfigs(allocator, tensor_configs);
+    var mxfp4_configs = try extractFromTensorConfigs(allocator, tensor_configs);
     defer mxfp4_configs.deinit(allocator);
 
     // Basic validation

@@ -1,6 +1,6 @@
 const std = @import("std");
 const mxfp4Config = @import("mxfp4Config.zig");
-const mxfp4Dequantization = @import("mxfp4Dequantization.zig");
+const mxfp4Dequantization = @import("dequantization.zig");
 
 const Mxfp4TensorConfig = mxfp4Config.Mxfp4TensorConfig;
 

@@ -1,5 +1,5 @@
 const std = @import("std");
-const mxfp4TensorReader = @import("mxfp4TensorReader.zig");
+const tensorReader = @import("tensorReader.zig");
 const mxfp4Config = @import("mxfp4Config.zig");
 const safetensors = @import("safetensors.zig");
 
@@ -13,14 +13,14 @@ pub fn main() !void {
     var tensor_configs = try safetensors.parseHeader(file_path, allocator);
     defer tensor_configs.deinit(allocator);
 
-    var mxfp4_tensor_configs = try mxfp4Config.extractMxfp4TensorConfigs(allocator, tensor_configs);
+    var mxfp4_tensor_configs = try mxfp4Config.extractFromTensorConfigs(allocator, tensor_configs);
     defer mxfp4_tensor_configs.deinit(allocator);
 
     for (mxfp4_tensor_configs.items) |mxfp4_tensor_config| {
         std.debug.print("MXFP4 tensor config {s}: {any}\n", .{ mxfp4_tensor_config.mxfp4_tensor_name, mxfp4_tensor_config });
     }
 
-    var readers: std.ArrayList(*mxfp4TensorReader.DequantizedMxfp4TensorReader) = .empty;
+    var readers: std.ArrayList(*tensorReader.DequantizedMxfp4TensorReader) = .empty;
     defer {
         // Clean up all readers and their associated buffers
         for (readers.items) |reader| {
@@ -41,8 +41,8 @@ pub fn main() !void {
         const reader_buffer = try allocator.alloc(u8, 4096);
         try all_buffers.append(allocator, reader_buffer);
 
-        const reader = try allocator.create(mxfp4TensorReader.DequantizedMxfp4TensorReader);
-        reader.* = try mxfp4TensorReader.DequantizedMxfp4TensorReader.init(reader_buffer, file_path, allocator, mxfp4_tensor_config);
+        const reader = try allocator.create(tensorReader.DequantizedMxfp4TensorReader);
+        reader.* = try tensorReader.DequantizedMxfp4TensorReader.init(reader_buffer, file_path, allocator, mxfp4_tensor_config);
 
         try readers.append(allocator, reader);
     }
