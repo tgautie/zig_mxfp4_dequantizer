@@ -1,8 +1,6 @@
 const std = @import("std");
 const safetensors = @import("safetensors.zig");
 
-// This file contains the logic to extract MXFP4 tensor configs from safetensors tensor configs.
-
 pub const Mxfp4TensorConfig = struct {
     mxfp4_tensor_name: []const u8,
     blocks_count: u32,
@@ -14,6 +12,7 @@ pub const Mxfp4TensorConfig = struct {
     blocks_absolute_offsets: [2]u32,
 };
 
+// Extracts MXFP4 tensor configs from the list of a safetensors file's tensor configs.
 pub fn extractFromTensorConfigs(
     allocator: std.mem.Allocator,
     tensor_configs: std.ArrayList(safetensors.TensorConfig),

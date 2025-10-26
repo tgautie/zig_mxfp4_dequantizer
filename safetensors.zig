@@ -1,7 +1,5 @@
 const std = @import("std");
 
-// This file contains the logic to parse the header of a safetensors file and extract the tensor configs from it.
-
 pub const TensorConfig = struct {
     tensor_name: []const u8,
     dtype: []const u8,
@@ -15,6 +13,7 @@ pub const TensorConfig = struct {
     }
 };
 
+// Parses the header of a safetensors file and extract all tensor configs.
 pub fn parseHeader(
     file_path: []const u8,
     allocator: std.mem.Allocator,

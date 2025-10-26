@@ -11,7 +11,7 @@ pub fn main() !void {
     var dequantizedSafetensors = try tensorReaders.DequantizedMxfp4TensorReaders.init(allocator, file_path);
     defer dequantizedSafetensors.deinit(allocator);
 
-    std.debug.print("Dequantizing on the fly the following MXFP4 tensors found in the provided file:\n", .{});
+    std.debug.print("Dequantizing the first 100 bytes on the fly from the following MXFP4 tensors:\n", .{});
 
     for (dequantizedSafetensors.readers.items) |reader| {
         std.debug.print("{s}\n", .{reader.name});

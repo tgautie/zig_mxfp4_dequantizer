@@ -4,7 +4,8 @@ const mxfp4Config = @import("mxfp4Config.zig");
 const safetensors = @import("safetensors.zig");
 
 // This is the entry point to the library.
-// On initialization, this struct extracts the MXFP4 tensor configs from the safetensors file and provides a DequantizedMxfp4TensorReader for each MXFP4 tensor.
+// It provides a DequantizedMxfp4TensorReader for each MXFP4 tensor found in the safetensors file.
+// On initialization, this struct parses the safetensors header, extracts the MXFP4 tensor configs, initializes the reader buffers.
 pub const DequantizedMxfp4TensorReaders = struct {
     readers: std.ArrayList(*tensorReader.DequantizedMxfp4TensorReader),
     buffers: std.ArrayList([]u8),
@@ -41,14 +42,11 @@ pub const DequantizedMxfp4TensorReaders = struct {
     }
 
     pub fn deinit(self: *DequantizedMxfp4TensorReaders, allocator: std.mem.Allocator) void {
-        // Deinit all readers
         for (self.readers.items) |reader| {
             reader.deinit(allocator);
-            allocator.destroy(reader);
         }
         self.readers.deinit(allocator);
 
-        // Free all buffers
         for (self.buffers.items) |buffer| {
             allocator.free(buffer);
         }

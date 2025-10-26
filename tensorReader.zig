@@ -4,23 +4,21 @@ const mxfp4Dequantization = @import("dequantization.zig");
 
 const Mxfp4TensorConfig = mxfp4Config.Mxfp4TensorConfig;
 
-// The size of the post-decoding f32 block, in bytes
 const decoded_block_byte_size = 4 * mxfp4Dequantization.block_size;
-
-// Size of the file reader buffers used internally to stream the blocks and scales from the provided file
 const file_reader_buffer_size = 1024;
 
-// This is an implementation of the std.Io.Reader interface, that dequantizes MXFP4 tensors on the fly.
-// The reader provides access to the byte stream of decoded f32 values.
+// This is an implementation of the `std.Io.Reader` interface, that dequantizes an MXFP4 tensor on the fly, and outputs the byte stream of decoded f32 values.
+// On initialization, it creates two file readers with an offset to the scales and blocks values of the MXFP4 tensor, and their corresponding buffers.
+// During streaming, it decompresses the blocks one by one, and keeps track of the position within the last decoded block to enable byte-by-byte streaming.
 pub const DequantizedMxfp4TensorReader = struct {
     name: []const u8,
-    // We keep track of the number of dequantized blocks and the total number of blocks
+    // Global progress tracking
     dequantized_blocks_count: usize,
     total_blocks_count: usize,
-    // We keep the last decoded block in memory, in order to stream it byte-by-byte
+    // Local progress tracking within the last decoded block
     current_block: [decoded_block_byte_size]u8,
     current_block_index: usize,
-    // The file readers for the scales and blocks input files
+    // The file readers for the scales and blocks inputs
     scales_reader: std.fs.File.Reader,
     blocks_reader: std.fs.File.Reader,
     // Heap-allocated buffers for the scales and blocks input readers
@@ -29,7 +27,6 @@ pub const DequantizedMxfp4TensorReader = struct {
     // std.Io.Reader interface 🌟
     interface: std.Io.Reader,
 
-    // Initializes the reader with the buffer, file path, and MXFP4 tensor config
     pub fn init(reader_buffer: []u8, file_path: []const u8, allocator: std.mem.Allocator, mxfp4_tensor_config: Mxfp4TensorConfig) !DequantizedMxfp4TensorReader {
         var result: DequantizedMxfp4TensorReader = undefined;
 
@@ -39,7 +36,7 @@ pub const DequantizedMxfp4TensorReader = struct {
         result.name = try allocator.dupe(u8, mxfp4_tensor_config.mxfp4_tensor_name);
         result.dequantized_blocks_count = 0;
         result.total_blocks_count = mxfp4_tensor_config.blocks_count;
-        result.current_block_index = decoded_block_byte_size; // Initialized to the end of the block, to be filled in the first dequantization
+        result.current_block_index = decoded_block_byte_size; // Initialized to the end of the block, to trigger a block decoding in the first stream call
 
         const scales_file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
         result.scales_reader = scales_file.reader(result.scales_input_buffer);
@@ -59,20 +56,16 @@ pub const DequantizedMxfp4TensorReader = struct {
         return result;
     }
 
-    // Returns a pointer to the Reader interface
     pub fn reader(self: *DequantizedMxfp4TensorReader) *std.Io.Reader {
         return &self.interface;
     }
 
-    // Cleanup method to properly close file handles
     pub fn deinit(self: *DequantizedMxfp4TensorReader, allocator: std.mem.Allocator) void {
         allocator.free(self.name);
         allocator.free(self.scales_input_buffer);
         allocator.free(self.blocks_input_buffer);
     }
 
-    /// The stream method fills up to `limit` bytes into the Writer `w` from the dequantized 32-float blocks.
-    /// When limit is not a multiple of the block size (32), we track our position within the current block.
     fn stream(r: *std.Io.Reader, w: *std.Io.Writer, limit: std.Io.Limit) !usize {
         const self: *DequantizedMxfp4TensorReader = @fieldParentPtr("interface", r);
 
@@ -120,7 +113,7 @@ pub const DequantizedMxfp4TensorReader = struct {
 
     pub const vtable = std.Io.Reader.VTable{
         .stream = stream,
-        // discard, readVec, and rebase all have defaults
+        // discard, readVec, and rebase all have defaults, we don't implement them
     };
 };
 
