@@ -60,3 +60,9 @@ following way:
 - Is there a more efficient way to load the fp4 values into the SIMD vectors,
   i.e. with some vectorized table lookup? Right now this is done in a for loop
 - Are there memory-handling subtleties that can be improved?
+- There is an important distinction made in Andrew Kelley's talks of above vs
+  below the vtable for reader interface implementations, where running logic
+  above the vtable allows for more powerful compilation. In this reader
+  implementation, the main logic is below the vtable in the stream method. What
+  would above-vtable logic look like? Should it be specific methods adapted to
+  this use-case like "streamNextBlocks(num_blocks)" or "streamFullTensor"?
